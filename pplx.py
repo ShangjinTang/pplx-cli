@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+
+# If you need to run this standalone without using in this project, you can run:
+# uv run <script_name>, such as `uv run pplx.py`
+# See: https://docs.astral.sh/uv/concepts/projects/run/#running-scripts
+# /// script
+# dependencies = [
+#     "httpx",
+#     "loguru",
+#     "pydantic",
+#     "requests",
+#     "rich",
+#     "typer",
+# ]
+# ///
+
 """
 Enhanced Perplexity CLI Tool
 A professional CLI interface for the Perplexity API with Rich output and flexible configuration.
