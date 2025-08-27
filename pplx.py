@@ -52,10 +52,9 @@ AVAILABLE_MODELS = list(DEFAULT_MODEL_ROUTER.keys())
 
 
 class OutputType(str, Enum):
-    """Available output formats"""
+    """Available output types"""
 
     DEFAULT = "default"
-    MARKDOWN = "markdown"
     PLAIN = "plain"
     JSON = "json"
 
@@ -177,7 +176,7 @@ class OutputRenderer:
     def render_default(
         content: str, citations: list = None, usage: Dict[str, Any] = None
     ) -> None:
-        """Render in default rich format with citations at bottom, no boxes for easy copying"""
+        """Render in default rich output type with citations at bottom, no boxes for easy copying"""
         # Main content without box - just markdown formatting
         console.print(Markdown(content))
 
@@ -193,16 +192,8 @@ class OutputRenderer:
                 console.print(f"[yellow]{i + 1}.[/yellow] {citation}")
 
     @staticmethod
-    def render_markdown(content: str, citations: list = None) -> str:
-        """Return content in markdown format with citations appended"""
-        result = content
-        if citations:
-            result += OutputRenderer.format_citations(citations)
-        return result
-
-    @staticmethod
     def render_plain(content: str, citations: list = None) -> str:
-        """Return content in plain text format with citations appended"""
+        """Return content in plain output type with citations appended"""
         result = content
         if citations:
             result += OutputRenderer.format_citations(citations)
@@ -215,7 +206,7 @@ class OutputRenderer:
         usage: Dict[str, Any] = None,
         model_used: str = None,
     ) -> str:
-        """Return content in JSON format with citations appended to content"""
+        """Return content in JSON output type with citations appended to content"""
         # Append citations to content if they exist
         full_content = content
         if citations:
@@ -270,7 +261,7 @@ def parse_model_router(router_str: str) -> Dict[str, str]:
             raise ValueError("Model router must be a JSON object")
         return router
     except json.JSONDecodeError:
-        raise ValueError("Invalid JSON format in model router")
+        raise ValueError("Invalid JSON output type in model router")
 
 
 def load_config(
@@ -390,13 +381,13 @@ def main(
             "--disable-router", help="Disable model router validation (for custom APIs)"
         ),
     ] = False,
-    output: Annotated[
-        OutputType, typer.Option("--output", "-o", help="Output format")
+    output_type: Annotated[
+        OutputType, typer.Option("--output-type", help="Output format")
     ] = OutputType.DEFAULT,
     usage: Annotated[
         bool,
         typer.Option(
-            "-u", "--usage", help="Show token usage information (default/json only)"
+            "--usage", help="Show token usage information (default/json only)"
         ),
     ] = False,
     no_citations: Annotated[
@@ -404,7 +395,7 @@ def main(
         typer.Option("--no-citations", help="Disable citations (enabled by default)"),
     ] = False,
     system_prompt: Annotated[
-        str, typer.Option("-s", "--system", help="Custom system prompt")
+        str, typer.Option("--system-prompt", help="Custom system prompt")
     ] = "Be precise and concise.",
     verbose: Annotated[
         bool, typer.Option("-v", "--verbose", help="Enable debug logging")
@@ -416,25 +407,21 @@ def main(
 
     Output formats:
         default: Rich formatted output with citations at bottom (no box around citations)
-        markdown: Markdown format with citations appended
         plain: Plain text format with citations appended
         json: JSON format with citations appended to content field
 
     Examples:
-        # Default rich output
-        ./perplexity_cli.py "What is AI?"
+        # Default rich output type
+        ./pplx.py "What is AI?"
 
-        # Markdown output (can pipe to other commands)
-        ./perplexity_cli.py "What is AI?" --output markdown > response.md
+        # Plain text output type
+        ./pplx.py "What is AI?" --output-type plain | echo
 
-        # Plain text output
-        ./perplexity_cli.py "What is AI?" --output plain | echo
-
-        # JSON output
-        ./perplexity_cli.py "What is AI?" --output json | jq .
+        # JSON output type
+        ./pplx.py "What is AI?" --output-type json | jq .
 
         # Custom API without routing
-        ./perplexity_cli.py "Hello" --api-key "key" --base-url "https://api.example.com" --model "provider/model" --disable-router --output json
+        ./pplx.py "Hello" --api-key "key" --base-url "https://api.example.com" --model "provider/model" --disable-router --output-type json
     """
 
     # If no message provided, show help
@@ -462,7 +449,7 @@ def main(
         client = PerplexityClient(config)
 
         # Show info about selected model (only for default output with verbose)
-        if verbose and output == OutputType.DEFAULT:
+        if verbose and output_type == OutputType.DEFAULT:
             full_model = client.get_model_name(selected_model)
             renderer.render_info(f"Using model: {selected_model} -> {full_model}")
             renderer.render_info(f"Base URL: {config.base_url}")
@@ -481,19 +468,19 @@ def main(
         # Render results based on output type
         citations = result["citations"] if show_citations else []
 
-        if output == OutputType.DEFAULT:
+        if output_type == OutputType.DEFAULT:
             renderer.render_default(
                 content=result["content"],
                 citations=citations,
                 usage=result["usage"] if usage else None,
             )
-        elif output == OutputType.MARKDOWN:
+        elif output_type == OutputType.MARKDOWN:
             markdown_output = renderer.render_markdown(result["content"], citations)
             print(markdown_output)
-        elif output == OutputType.PLAIN:
+        elif output_type == OutputType.PLAIN:
             plain_output = renderer.render_plain(result["content"], citations)
             print(plain_output)
-        elif output == OutputType.JSON:
+        elif output_type == OutputType.JSON:
             json_output = renderer.render_json(
                 content=result["content"],
                 citations=citations,
@@ -505,7 +492,7 @@ def main(
         logger.debug("Query completed successfully")
 
     except ValueError as e:
-        if output == OutputType.JSON:
+        if output_type == OutputType.JSON:
             error_json = json.dumps({"error": str(e)}, indent=2)
             print(error_json)
         else:
@@ -513,7 +500,7 @@ def main(
         raise typer.Exit(1)
 
     except Exception as e:
-        if output == OutputType.JSON:
+        if output_type == OutputType.JSON:
             error_json = json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
             print(error_json)
         else:
